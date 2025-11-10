@@ -1,13 +1,3 @@
----
-
-# How Our Model Works (and why we ended up using logistic regression)
-
-So for this project, we tried a few different models — Decision Tree, Random Forest, Naive Bayes, and Logistic Regression — to see which one could best identify whether each word in a sentence is Filipino, English, or Other.
-
-After lots and lots of testing, we decided to go with **Logistic Regression**, because it gave the most balanced and consistent results across our testing and training splits.
-
----
-
 ## How Logistic Regression Actually Works
 
 Logistic Regression isn’t actually “regression” like predicting numbers (what you guys will usually here is like prediciting house prices or stock prices, AKA something continuous) — it’s a **classifier**.
@@ -107,6 +97,7 @@ That’s why a model that can handle relationships between features — like Log
 * Decision Trees and Random Forests rely on **hard yes/no rules** (if statements), which overfit easily.
 * Naive Bayes assumes **clues don’t interact**, which doesn’t match real language patterns.
 * Our features (prefixes, suffixes, capitalization, etc.) are **dependent**, so Logistic Regression makes more sense.
+
 
 
 
