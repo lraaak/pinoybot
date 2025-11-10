@@ -1,6 +1,3 @@
-Perfect — here’s a single, cohesive README-ready version that combines **your earlier Logistic Regression explanation** *plus* the new part about why we didn’t use Decision Trees or Naive Bayes, and what it means that our features are **dependent**.
-It reads like something you’d naturally say to your groupmates in a write-up or presentation.
-
 ---
 
 # 🧠 How Our Model Works (and Why We Ended Up Using Logistic Regression)
@@ -115,3 +112,4 @@ Logistic Regression gave us the best results because it generalizes patterns in 
 ---
 
 Would you like me to add a **small closing paragraph** that summarizes this whole section in one short “What we learned from testing different models” paragraph (like a reflection-style ending)? It’d be perfect for the last part of your README or presentation.
+
