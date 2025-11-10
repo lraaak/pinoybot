@@ -96,7 +96,7 @@ Example:
 * “is_capitalized” isn’t useful by itself —
   but combined with “has_punct” or “has_digit”, it might hint at something like “OTH” (symbols, names, or expressions).
 
-Because our linguistic clues rely on one another, they’re **dependent**.
+Because our extracted features rely on one another, they’re **dependent**.
 That’s why a model that can handle relationships between features — like Logistic Regression — performs better than one that assumes independence (like Naive Bayes).
 
 ---
@@ -107,5 +107,6 @@ That’s why a model that can handle relationships between features — like Log
 * Decision Trees and Random Forests rely on **hard yes/no rules** (if statements), which overfit easily.
 * Naive Bayes assumes **clues don’t interact**, which doesn’t match real language patterns.
 * Our features (prefixes, suffixes, capitalization, etc.) are **dependent**, so Logistic Regression makes more sense.
+
 
 
