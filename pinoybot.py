@@ -11,7 +11,6 @@ import joblib
 from typing import List
 from feature_utils import extract_features_for_word
 
-# Main tagging function
 """
 pinoybot.py
 
@@ -19,7 +18,6 @@ PinoyBot: Filipino Code-Switched Language Identifier
 Loads the trained Decision Tree model and vectorizer to tag new tokens.
 """
 
-# Load model + vectorizer
 MODEL_PATH = "pinoybot_model.pkl"
 VEC_PATH = "pinoybot_vectorizer.pkl"
 
@@ -34,17 +32,16 @@ def tag_language(tokens: List[str]) -> List[str]:
     return [str(tag) for tag in predicted]
 
 if __name__ == "__main__":
-    example_tokens = [
-    "Grabe", "ang", "vibes", "today", 
-    "sobrang", "happy", "ako", 
-    "after", "class", 
-    "kasi", "we", "ate", "together", 
-    "sa", "canteen", 
-    "around", "3PM", 
-    "tapos", "nagchika", "pa", "kami", 
-    "about", "the", "project", 
-    "and", "graduation", "soon"
+    example_tokens =[
+    "chinat", "niya", "ako", "kanina", ".", "magshopping", "ako"
     ]
 
     print("Tokens:", example_tokens)
-    print("Predicted tags:", tag_language(example_tokens))
+    predicted_tags = tag_language(example_tokens)
+    
+    print("TAG | TOKEN")
+    for i in range(len(example_tokens)):
+        token = example_tokens[i]
+        tag = predicted_tags[i]
+        print(f"{tag} | {token}")
+

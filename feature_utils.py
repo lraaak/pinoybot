@@ -1,34 +1,41 @@
 # feature_utils.py
 # -----------------------------------------------------------
-# Ultimate version of the PinoyBot feature extractor
-# Adds expanded Filipino & English morphology, 
-# capitalization logic, short-word disambiguation, 
-# and robust context features.
+# Ultimate version of the PinoyBot feature extractor (optimized for Random Forest)
+# Adds expanded English/FIL morphology, capitalization logic,
+# stopwords, context awareness, and orthographic structure.
 # -----------------------------------------------------------
 
 import pandas as pd
 import string
 import re
 
+# TODO: Fix capitalization checking for NE/OTHER detection, recall is too high so non eng words are classigfied as ENG, ALL CAPS OR JEJEMON WORDS are hard to classify
+
 VOWELS = set("aeiouAEIOU")
+VOWELS_LOWER = set("aeiou")
 
 # English / Filipino pattern sets
 ENGLISH_SUFFIXES = ("ing", "ed", "tion", "sion", "ly", "ment", "ness", "able", "ous", "ive", "less", "ful")
 ENGLISH_CLUSTERS = ("th", "sh", "ch", "ph", "wh")
 FILIPINO_PREFIXES = ("mag", "nag", "ni", "ka", "pa", "pag", "ma", "man", "na", "pin")
 FILIPINO_SUFFIXES = ("an", "han", "hin", "in", "on", "ko", "ta", "ka", "mo")
+FILIPINO_INFIXES = ("um", "in")
 
 COMMON_EN_SHORTS = {"i", "a", "an", "am", "is", "in", "it", "of", "on", "at", "to", "we", "he", "be", "do", "go", "no", "so", "up", "us", "the", "and"}
 COMMON_FIL_SHORTS = {"si", "sa", "na", "pa", "po", "ko", "mo", "ka", "ba", "ha", "eh", "ay", "di"}
+COMMON_ENG_WORDS = {"the", "be", "to", "of", "and", "a", "in", "that", "have", "it", "you", "he", "was", "for", "on", "are", "as", "with", "his", "they", "at", "one", "by", "word", "but", "not", "what", "all", "were", "we", "when", "your", "can", "said", "there", "use", "an", "each", "which", "she", "do", "how", "their", "if"}
+COMMON_FIL_WORDS = {"grabe", "sige", "kasi", "naman", "ba", "po", "opo", "tapos", "ayan", "ako", "kami", "kayo", "pa", "na"}
 
-COMMON_ENG_WORDS = {"happy", "sad", "love", "study", "project", "graduation", "after", "before", "and", "today", "soon"}
-COMMON_FIL_WORDS = {"grabe", "sige", "kasi", "naman", "ba", "po", "tapos", "ayan", "ako", "kami", "kayo", "pa", "na"}
+ENGLISH_STOPWORDS = {
+    "the", "and", "to", "in", "for", "of", "on", "with", "from", "that", "is", "was", "it", "as", "this", "by", "at", "or", "be", "an", "are", "if"
+}
 
 def extract_features_for_word(word: str, prev_word=None, prev_pred=None):
     """Extract rich linguistic, orthographic, and contextual features for one word."""
 
     if not isinstance(word, str):
         word = "" if pd.isna(word) else str(word)
+
     lower = word.lower().strip()
     num_chars = len(lower)
     num_vowels = sum(ch in VOWELS for ch in lower)
@@ -40,43 +47,68 @@ def extract_features_for_word(word: str, prev_word=None, prev_pred=None):
         # --- BASIC LEXICAL ---
         "length": num_chars,
         "num_vowels": num_vowels,
-        "vowel_ratio": vowel_ratio,
-        "consonant_ratio": consonant_ratio,
+        "vowel_ratio": vowel_ratio, 
+        "consonant_ratio": consonant_ratio, 
         "is_capitalized": int(num_chars > 0 and word[0].isupper()),
         "is_all_caps": int(num_chars > 0 and word.isupper()),
         "has_digit": int(any(ch.isdigit() for ch in word)),
         "has_punct": int(any(ch in string.punctuation for ch in word)),
         "is_short_word": int(len(lower) <= 3),
         "is_long_word": int(len(lower) >= 8),
+        "is_first_word": prev_word is None and prev_pred is None
     }
 
     # --- LETTER PRESENCE ---
     for vowel in "aeiou":
         feats[f"num_{vowel}"] = lower.count(vowel)
+    for ch in "cfjqvx": #letters not found in original Filipino Alphabet
+        feats[f"has_{ch}"] = int(ch in lower)
 
     # --- FILIPINO MORPHOLOGY ---
     for pre in FILIPINO_PREFIXES:
         feats[f"starts_{pre}"] = int(lower.startswith(pre))
     for suf in FILIPINO_SUFFIXES:
         feats[f"ends_{suf}"] = int(lower.endswith(suf))
+    for infix in FILIPINO_INFIXES:
+        feats[f"has_infix_{infix}"] = int(infix in lower[1:-1])
     feats["has_ng"] = int("ng" in lower)
     feats["has_mga"] = int("mga" in lower)
     feats["has_reduplication"] = int(bool(re.search(r"(.+)-\1", lower)))  # araw-araw
     feats["has_reduplication_flex"] = int(bool(re.search(r"([a-z]{2,})\1", lower)))  # haha, sige-sige
+    #partial reduplication (e.g. kakainin, sisibol)
+    if len(lower) >= 4:  # at least 4 letters to have a repeat
+        first2 = lower[:2]
+        feats["has_repeated_first2"] = int(first2 in lower[2:])
+    else:
+        feats["has_repeated_first2"] = 0
+        
+    
 
     # --- ENGLISH MORPHOLOGY ---
     for suf in ENGLISH_SUFFIXES:
         feats[f"ends_{suf}"] = int(lower.endswith(suf))
     for cluster in ENGLISH_CLUSTERS:
         feats[f"has_{cluster}"] = int(cluster in lower)
-
+    feats["has_double_consonant"] = int(bool(re.search(r"(bb|cc|dd|ff|kk|ll|mm|nn|pp|rr|ss|tt)", lower)))
+    feats["has_vowel_consonant_vowel"] = int(bool(re.search(r"[aeiou][bcdfghjklmnpqrstvwxyz][aeiou]", lower)))
+    feats["contains_q_or_x"] = int("q" in lower or "x" in lower)
+    feats["is_english_stopword"] = int(lower in ENGLISH_STOPWORDS)
+    feats["has_complex_consonant_cluster"] = int(bool(re.search(r"[bcdfghjklmnpqrstvwxyz]{3,}", lower)))
+    #diphthongs
+    for v1 in VOWELS_LOWER:
+        for v2 in VOWELS_LOWER:
+            pair = v1 + v2
+            feats[f"has_pair_{pair}"] = int(pair in lower)
+    
+    
     # --- SHORT-WORD DISAMBIGUATION ---
     feats["is_common_eng_short"] = int(lower in COMMON_EN_SHORTS)
     feats["is_common_fil_short"] = int(lower in COMMON_FIL_SHORTS)
 
-    # --- SEMANTIC HINTS (mini dictionaries) ---
+    # --- SEMANTIC HINTS ---
     feats["is_known_eng"] = int(lower in COMMON_ENG_WORDS)
     feats["is_known_fil"] = int(lower in COMMON_FIL_WORDS)
+    
 
     # --- STRUCTURAL / SYMBOLIC ---
     feats["is_acronym"] = int(word.isupper() and len(word) <= 5 and word.isalpha())
@@ -91,22 +123,37 @@ def extract_features_for_word(word: str, prev_word=None, prev_pred=None):
 
     # --- CHARACTER-LEVEL N-GRAMS ---
     for i in range(len(lower) - 1):
-        feats[f"bi_{lower[i:i+2]}"] = 1
+        feats[f"bi_{lower[i:i+2]}"] = 1 
     for i in range(len(lower) - 2):
         feats[f"tri_{lower[i:i+3]}"] = 1
+    for i in range(len(lower) - 3):
+        feats[f"quad_{lower[i:i+4]}"] = 1
+    
 
     # --- CONTEXT FEATURES ---
-    
-    if prev_word:
+    if prev_word and isinstance(prev_word, str):
         feats["prev_ends_vowel"] = int(prev_word[-1].lower() in "aeiou")
         feats["prev_is_capitalized"] = int(prev_word[0].isupper()) if len(prev_word) > 0 else 0
     else:
-        feats["prev_ends_vowel"] = 0
-        feats["prev_is_capitalized"] = 0
-
+        prev_word_str = str(prev_word) if prev_word is not None else ""
+        feats["prev_ends_vowel"] = int(prev_word_str[-1:].lower() in "aeiou") if prev_word_str else 0
+        feats["prev_is_capitalized"] = int(prev_word_str[0].isupper()) if len(prev_word_str) > 0 else 0
     if prev_pred:
         feats[f"prev_pred_{prev_pred}"] = 1
+        feats["prev_was_english"] = int(prev_pred == "ENG")
     else:
         feats["prev_pred_NONE"] = 1
+        feats["prev_was_english"] = 0
+        
+    prefix_of_word_arr = []
+    for letters in word: 
+        if letters == "-":
+            break
+        prefix_of_word_arr.append(letters)
+
+    prefix_of_word = "".join(prefix_of_word_arr)
+    feats["has_prefix_before_punct"] = int(prefix_of_word in FILIPINO_PREFIXES)
+    
+    
 
     return feats
