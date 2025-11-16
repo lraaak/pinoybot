@@ -2,46 +2,101 @@
 pinoybot.py
 
 PinoyBot: Filipino Code-Switched Language Identifier
-
-This module provides the main tagging function for the PinoyBot project, which identifies the language of each word in a code-switched Filipino-English text. The function is designed to be called with a list of tokens and returns a list of tags ("ENG", "FIL", or "OTH").
-
-Model training and feature extraction should be implemented in a separate script. The trained model should be saved and loaded here for prediction.
+Loads the trained model and vectorizer to tag new tokens.
 """
+
 import joblib
 from typing import List
 from feature_utils import extract_features_for_word
+import pathlib
+import re
+import os
 
-"""
-pinoybot.py
+print(f"I am looking for files in: {os.getcwd()}")
 
-PinoyBot: Filipino Code-Switched Language Identifier
-Loads the trained Decision Tree model and vectorizer to tag new tokens.
-"""
+# ============================================================
+# MODEL SELECTION
+# ============================================================
 
-MODEL_PATH = "pinoybot_model.pkl"
+# Options:
+#   "lr"
+#   "random_forest"
+#   "svc"
+MODEL_CHOICE = "random_forest"
+
+MODEL_PATH = f"pinoybot_model_{MODEL_CHOICE}.pkl"
 VEC_PATH = "pinoybot_vectorizer.pkl"
 
-clf = joblib.load(MODEL_PATH)
-vec = joblib.load(VEC_PATH)
+# ============================================================
+# LOAD MODEL + VECTORIZER
+# ============================================================
+
+script_dir = pathlib.Path(__file__).parent
+
+model_file = script_dir / MODEL_PATH
+vectorizer_file = script_dir / VEC_PATH
+
+print(f"Loading model: {model_file}")
+clf = joblib.load(model_file)
+
+print(f"Loading vectorizer: {vectorizer_file}")
+vec = joblib.load(vectorizer_file)
+
+
+# ============================================================
+# SPECIAL WORD HANDLING
+# ============================================================
+
+def decade_to_word(decade):
+    decade = decade.lower()
+    if len(decade) < 3:
+        return decade
+
+    if (decade[-1] == 's' and decade[-2].isdigit()) or \
+       (decade[-2] == "'" and decade[-1] == 's' and decade[-3].isdigit()):
+
+        decade_str = decade.replace("'", "").replace('s', '')
+        if not decade_str.isdigit():
+            return decade
+
+        num = int(decade_str) % 100
+
+        number_words = {
+            0: 'hundreds', 10: 'tens', 20: 'twenties', 30: 'thirties',
+            40: 'forties', 50: 'fifties', 60: 'sixties', 70: 'seventies',
+            80: 'eighties', 90: 'nineties'
+        }
+        return number_words.get(num, decade)
+
+    return decade
+
+
+# ============================================================
+# TAGGING FUNCTION
+# ============================================================
 
 def tag_language(tokens: List[str]) -> List[str]:
-    """Tag each token as FIL, ENG, or OTH."""
-    features = [extract_features_for_word(word) for word in tokens]
+    token_copy = [decade_to_word(word) for word in tokens]
+    features = [extract_features_for_word(word) for word in token_copy]
     X_new = vec.transform(features)
     predicted = clf.predict(X_new)
     return [str(tag) for tag in predicted]
 
+
+# ============================================================
+# TESTING
+# ============================================================
+
 if __name__ == "__main__":
-    example_tokens =[
-    "chinat", "niya", "ako", "kanina", ".", "magshopping", "ako"
-    ]
 
-    print("Tokens:", example_tokens)
-    predicted_tags = tag_language(example_tokens)
-    
+    sentence = "Tara! nag-coffee tayo sa Starbucks, after ng project natin. Grabe, ang saya! I love it! gustong-gusto ko na mag-haircut eh. Sige, see you soon!"
+
+    punctuation_to_separate = r'([.,;:\"?!()])'
+    tokens = re.split(r'\s+|' + punctuation_to_separate, sentence)
+    tokens = [t for t in tokens if t and t.strip()]
+
+    predicted_tags = tag_language(tokens)
+
     print("TAG | TOKEN")
-    for i in range(len(example_tokens)):
-        token = example_tokens[i]
-        tag = predicted_tags[i]
+    for tag, token in zip(predicted_tags, tokens):
         print(f"{tag} | {token}")
-

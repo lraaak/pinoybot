@@ -23,7 +23,8 @@ FILIPINO_INFIXES = ("um", "in")
 
 COMMON_EN_SHORTS = {"i", "a", "an", "am", "is", "in", "it", "of", "on", "at", "to", "we", "he", "be", "do", "go", "no", "so", "up", "us", "the", "and"}
 COMMON_FIL_SHORTS = {"si", "sa", "na", "pa", "po", "ko", "mo", "ka", "ba", "ha", "eh", "ay", "di"}
-COMMON_ENG_WORDS = {"the", "be", "to", "of", "and", "a", "in", "that", "have", "it", "you", "he", "was", "for", "on", "are", "as", "with", "his", "they", "at", "one", "by", "word", "but", "not", "what", "all", "were", "we", "when", "your", "can", "said", "there", "use", "an", "each", "which", "she", "do", "how", "their", "if"}
+
+COMMON_ENG_WORDS = {"happy", "sad", "love", "study", "project", "graduation", "after", "before", "and", "today", "soon"}
 COMMON_FIL_WORDS = {"grabe", "sige", "kasi", "naman", "ba", "po", "opo", "tapos", "ayan", "ako", "kami", "kayo", "pa", "na"}
 
 ENGLISH_STOPWORDS = {
@@ -81,7 +82,6 @@ def extract_features_for_word(word: str, prev_word=None, prev_pred=None):
         feats["has_repeated_first2"] = int(first2 in lower[2:])
     else:
         feats["has_repeated_first2"] = 0
-        
     
 
     # --- ENGLISH MORPHOLOGY ---
@@ -131,29 +131,18 @@ def extract_features_for_word(word: str, prev_word=None, prev_pred=None):
     
 
     # --- CONTEXT FEATURES ---
-    if prev_word and isinstance(prev_word, str):
+    if prev_word:
         feats["prev_ends_vowel"] = int(prev_word[-1].lower() in "aeiou")
         feats["prev_is_capitalized"] = int(prev_word[0].isupper()) if len(prev_word) > 0 else 0
     else:
-        prev_word_str = str(prev_word) if prev_word is not None else ""
-        feats["prev_ends_vowel"] = int(prev_word_str[-1:].lower() in "aeiou") if prev_word_str else 0
-        feats["prev_is_capitalized"] = int(prev_word_str[0].isupper()) if len(prev_word_str) > 0 else 0
+        feats["prev_ends_vowel"] = 0
+        feats["prev_is_capitalized"] = 0
+
     if prev_pred:
         feats[f"prev_pred_{prev_pred}"] = 1
         feats["prev_was_english"] = int(prev_pred == "ENG")
     else:
         feats["prev_pred_NONE"] = 1
         feats["prev_was_english"] = 0
-        
-    prefix_of_word_arr = []
-    for letters in word: 
-        if letters == "-":
-            break
-        prefix_of_word_arr.append(letters)
-
-    prefix_of_word = "".join(prefix_of_word_arr)
-    feats["has_prefix_before_punct"] = int(prefix_of_word in FILIPINO_PREFIXES)
-    
-    
 
     return feats
